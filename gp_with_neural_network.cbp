@@ -31,7 +31,12 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
+			<Add directory="C:/Users/Юлия/AppData/Local/Programs/Python/Python312/include" />
 		</Compiler>
+		<Linker>
+			<Add library="C:/Users/Юлия/AppData/Local/Programs/Python/Python312/libs/libpython312.a" />
+			<Add directory="C:/Users/Юлия/AppData/Local/Programs/Python/Python312/libs" />
+		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions />
 	</Project>

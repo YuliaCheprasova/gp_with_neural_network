@@ -16,7 +16,7 @@ static random_device rd;
 static mt19937 gen(rd());
 normal_distribution<double> dist(mean, stddev);
 uniform_real_distribution<double> dis(1.0, 100.0);
-int unar_oper = 6, bin_oper = 6, trin_oper = 1, num_var = 13, counter = -1, max_nodes = 100;
+int unar_oper = 6, bin_oper = 6, trin_oper = 1, num_var = 1, counter = -1, max_nodes = 100;
 // 1000sin, 1001cos, 1002exp, 1003ln, 1004 1/x, 1005-выраж, 2000log, 2001+, 2002-, 2003*, 2004/, 2005a^x, 3000if..then..else
 // 0x,
 char type[3]{ 'o', 'v', 'c' };
@@ -108,6 +108,8 @@ public:
     string printExpression();
 
     string printExpression(Node* cur_el);
+
+    //string printExpressionForPython(Node* cur_el, double** x);
 
     double error(int num_obs, double** x, double* y);
 
@@ -246,7 +248,7 @@ int Tree::CountDepth(Node* cur_el)
     return max(maxDepth, middleDepth) + 1;
 }
 
-int Tree::AddNode(char type, int number, double value, int depth, int* flag, int d)//сюда не зайдет
+int Tree::AddNode(char type, int number, double value, int depth, int* flag, int d)
 {
     AddNode(type, number, value, depth, flag, d, root);
     if (*flag == 0)
@@ -267,6 +269,7 @@ int Tree::Add_Node_mut(char type, int number, double value, int depth, int* flag
         return 1;
     }
 }
+
 void Tree::AddNode(char type, int number, double value, int depth, int* flag, int d, Node*& cur_el)
 {
     int randcase;
@@ -467,6 +470,121 @@ double Tree::evaluateExpression(double* x, Node* cur_el)
     return 0.0;
 }
 
+double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-переменных нет, 1-переменные есть,но все ок, 2-переменные есть, выражение не определено
+{
+    string left_check, right_check;
+    if (cur_el == nullptr) {return 0.0;}
+    if (cur_el->type == 'c') {return cur_el->constant;}
+    else if (cur_el->type == 'v')
+    {
+        return x[cur_el->variable];
+    }
+    else if (cur_el->operation < 2000)
+    {
+        left_check = printExpression(cur_el->left);
+        if (check.find("x") == std::string::npos)
+        {
+            *flag = 0;
+        }
+        else {*flag = 1};
+        double ev_expression = evaluateExpression(x, cur_el->left);
+        if (*flag == 2)
+            return 0.0;
+        //if (isnan(ev_expression))
+        if (*flag == 0 && isinf(ev_expression)){ev_expression = MAX;}
+        else if (*flag == 1 && isinf(ev_expression))
+        {
+            *flag = 2;
+            retutn 0.0;
+        }
+        switch(cur_el->operation)
+        {
+            case 1000:
+            {
+                return sin(ev_expression);
+            }
+            case 1001:
+            {
+                return cos(ev_expression);
+            }
+            case 1002:
+            {
+                return exp(ev_expression);
+            }
+            case 1003:
+            {
+                if(*flag == 0 && ev_expression <= 0){ev_expression = MIN;}
+                else if (*flag == 1 && isinf(ev_expression))
+                {
+                    *flag = 2;
+                    retutn 0.0;
+                }
+                return log(ev_expression);
+            }
+            case 1004:
+            {
+                if(*flag == 0 && ev_expression == 0){ev_expression = MIN;}
+
+                return 1./ev_expression;
+            }
+            case 1005:
+            {
+                return -ev_expression;
+            }
+        }
+    }
+    else if (cur_el->operation < 3000)
+    {
+        double left_value = evaluateExpression(x, cur_el->left);
+        double right_value = evaluateExpression(x, cur_el->right);
+        if (isinf(left_value)){left_value = MAX;}
+        if (isinf(right_value)){right_value = MAX;}
+        switch (cur_el->operation)
+        {
+            case 2000:// слева основание
+                {
+                    if(left_value <= 0){left_value = MIN;}
+                    else if(left_value == 1){left_value = 0.9999999999999999;}//вот тут спросить
+                    if(right_value <= 0){right_value = MIN;}
+                    return log(right_value)/log(left_value);
+                }
+            case 2001:
+                return left_value +  right_value;
+            case 2002:
+                return left_value - right_value;
+            case 2003:
+                return left_value * right_value;
+            case 2004:
+                {
+                    if(right_value == 0){right_value = MIN;}
+                    return left_value / right_value;
+                }
+            case 2005:
+                {
+                    if(left_value < 0){right_value = round(right_value);}
+                    if(left_value == 0 && right_value < 0){return 0.0;}
+                    return pow(left_value, right_value);
+                }
+        }
+    }
+    else if (cur_el->operation >= 3000)
+    {
+        double left_value = evaluateExpression(x, cur_el->left);
+        double mid_value = evaluateExpression(x, cur_el->mid);
+        double right_value = evaluateExpression(x, cur_el->right);
+        if (isinf(left_value)){left_value = MAX;}
+        if (isinf(right_value)){right_value = MAX;}
+        if (isinf(mid_value)){mid_value = MAX;}
+        switch (cur_el->operation)
+        {
+            case 3000:
+                return left_value +  right_value;//я не знаю что тут возвращать...
+        }
+    }
+
+    return 0.0;
+}
+
 string Tree::printExpression()
 {
     return printExpression(root);
@@ -480,9 +598,13 @@ string Tree::printExpression(Node* cur_el)
     {
         if(cur_el->constant<0)
         {
-            return "(" + to_string(cur_el->constant) + ")";
+            check =  "(" + to_string(cur_el->constant) + ")";
         }
-        else{return to_string(cur_el->constant);}
+        else{check = to_string(cur_el->constant);}
+        size_t comma {check.find(",")};
+        if (comma != string::npos)
+            check.replace(comma, comma+1, ".");
+        return check;
     }
     else if (cur_el->type == 'v')
     {
@@ -573,6 +695,193 @@ string Tree::printExpression(Node* cur_el)
     return "";
 }
 
+/*string Tree::printExpressionForPython(Node* cur_el, double** x)
+{
+    string check, left_check, right_check;
+    int i, flag = 1, flag2 = 1;
+    double ev_expression, left_value, right_value;
+    if (cur_el == nullptr) {return "";}
+    if (cur_el->type == 'c')
+    {
+        if(cur_el->constant<0)
+        {
+            check =  "(" + to_string(cur_el->constant) + ")";
+        }
+        else{check = to_string(cur_el->constant);}
+        size_t comma {check.find(",")};
+        if (comma != string::npos)
+            check.replace(comma, comma+1, ".");
+        return check;
+    }
+    else if (cur_el->type == 'v')
+    {
+        check = to_string(cur_el->variable);
+        if(check.size() == 1){return "x0" + check;}
+        else {return "x" + check;}
+    }
+    else if (cur_el->operation < 2000)
+    {
+        //проверить если хотя бы с одним из номеров эпох возникает исключение, то всю формулу заменяем на число наиболее близко возможное
+        check = printExpressionForPython(cur_el->left, x);
+        if (check.find("x") == std::string::npos)
+        {
+            flag = 0;
+            ev_expression = evaluateExpression(x[0], cur_el->left);// если там нет x, то считаем выражение с любым x и если что заменяем
+            if (isinf(ev_expression))
+            {
+                check = to_string(MAX);
+                size_t comma {check.find(",")};
+                check.replace(comma, comma+1, ".");
+            }
+        }
+        switch(cur_el->operation)
+        {
+            case 1000:
+            {
+                if (check.find("(")==0)
+                    return "sin" + check;
+                else
+                {
+                    return "sin(" + check + ")";
+                }
+            }
+            case 1001:
+            {
+                if (check.find("(")==0)
+                    return "cos" + check;
+                else
+                {
+                    return "cos(" + check + ")";
+                }
+            }
+            case 1002:
+            {
+                if (check.find("(")==0)
+                    return "exp" + check;
+                else
+                {
+                    return "exp(" + check + ")";
+                }
+            }
+            case 1003:
+            {
+                if (flag == 0 && ev_expression <= 0)
+                {
+                    check = to_string(MIN);
+                    size_t comma {check.find(",")};
+                    check.replace(comma, comma+1, ".");
+                }
+                return "log(" + check + ")";//натуральный логарифм
+            }
+            case 1004:
+            {
+                if (flag == 0 && ev_expression == 0)
+                {
+                    check = to_string(MIN);
+                    size_t comma {check.find(",")};
+                    check.replace(comma, comma+1, ".");
+                }
+                if (check.find("(")==0)
+                    return "1/" + check;
+                else return "1/(" + check + ")";
+            }
+            case 1005:
+            {
+                return "(-" + check + ")";
+            }
+        }
+    }
+     else if (cur_el->operation >=2000 && cur_el->operation < 3000)
+    {
+        left_check = printExpressionForPython(cur_el->left, x);
+        right_check = printExpressionForPython(cur_el->right, x);
+        if (left_check.find("x") == std::string::npos)
+        {
+            flag = 0;
+            left_value = evaluateExpression(x[0], cur_el->left);
+            if (isinf(left_value))
+            {
+                left_check = to_string(MAX);
+                size_t comma {left_check.find(",")};
+                left_check.replace(comma, comma+1, ".");
+            }
+        }
+        if (right_check.find("x") == std::string::npos)
+        {
+            flag2 = 0;
+            right_value = evaluateExpression(x[0], cur_el->right);
+            if (isinf(right_value))
+            {
+                right_check = to_string(MAX);
+                size_t comma {right_check.find(",")};
+                right_check.replace(comma, comma+1, ".");
+            }
+        }
+        switch (cur_el->operation)
+        {
+            case 2000://слева основание, справа аргумент, для Python надо наоборот
+            {
+                if(flag == 0 && left_value <= 0)
+                {
+                    left_check = to_string(MIN);
+                    size_t comma {left_check.find(",")};
+                    left_check.replace(comma, comma+1, ".");
+                }
+                else if(flag == 0 && left_value == 1){left_check = "0.9999999999999999";}
+                if(flag2 == 0 && right_value <= 0)
+                {
+                    right_check = to_string(MIN);
+                    size_t comma {right_check.find(",")};
+                    right_check.replace(comma, comma+1, ".");
+                }
+                return "log(" + right_check + "," + left_check + ")";
+            }
+            case 2001:
+                return "(" + left_check + "+" + right_check + ")";
+            case 2002:
+                return "(" + left_check + "-" + right_check + ")";
+            case 2003:
+                return "(" + left_check + "*" + right_check + ")";
+            case 2004:
+            {
+                if(flag2 == 0 && right_value == 0)
+                {
+                    right_check = to_string(MIN);
+                    size_t comma {right_check.find(",")};
+                    right_check.replace(comma, comma+1, ".");
+                }
+                return "(" + left_check + "/" + right_check + ")";
+            }
+            case 2005:
+            {
+                if(flag2 == 0 && left_value < 0)//изменяем правое поддерево поэтому проверяем flag2
+                {
+                    right_value = round(right_value);
+                    right_check = to_string(right_value);
+                    size_t comma {right_check.find(",")};
+                    if (comma != string::npos)
+                        right_check.replace(comma, comma+1, ".");
+                }
+                if(flag == 0 && flag2 == 0 && left_value == 0 && right_value < 0){return "0";}
+                return "(" + left_check + ")**" + "(" + right_check + ")";
+            }
+        }
+    }
+    else if (cur_el->operation >= 3000)
+    {
+        string left_value = printExpressionForPython(cur_el->left, x);
+        string mid_value = printExpressionForPython(cur_el->mid, x);
+        string right_value = printExpressionForPython(cur_el->right, x);
+        switch (cur_el->operation)
+        {
+            case 3000:
+                return "if" + left_value + "then" + mid_value + "else" + right_value;
+        }
+    }
+
+    return "";
+}*/
+
 double Tree::error(int num_obs, double** x, double* y)
 {
     int obs;
@@ -590,10 +899,9 @@ double Tree::error(int num_obs, double** x, double* y)
 
 double Tree::count_fitness(double error)
 {
-    double e = 0.5, n = 5, v = 10;
+    double e = 0.5, n = 5;
     UpNumNodes();
-    int current_num_var = CountVar();
-    double fitness = 1./(v+1+e*error+n*double(num_nodes)/double(max_nodes)-v*double(current_num_var)/double(num_var));
+    double fitness = 1./(1+e*error+n*double(num_nodes)/double(max_nodes));
     if(isinf(fitness)){fitness = MAX;}
     return fitness;
 }
@@ -1385,17 +1693,39 @@ void count_rang_fitness(double* arr, double* rang, int n, bool var = false)
     delete[] index;
 }
 
+void fitness_by_neural_network()
+{
+    cout << "in function" << endl;
+    char* filename = "C:\\Programs\\PycharmProjects\\neuron_network_QW\\main.py";
+    PyObject *obj = Py_BuildValue("s", filename);
+    FILE *file = _Py_fopen_obj(obj, "r+");
+    // Открываем Python файл для выполнения
+    //FILE* file = fopen(filename, "r");
+    if (file != nullptr) {
+        // Выполняем Python скрипт
+        cout << "run" << endl;
+        PyRun_SimpleFile(file, filename);
+        if (PyErr_Occurred()) {
+            PyErr_Print();  // Печать ошибки, если она возникла
+        }
+        fclose(file);  // Закрываем файл
+    } else {
+        cout << "Не удалось открыть файл " << filename << endl;
+    }
+    cout << "almost out" << endl;
+}
+
 int main()
 {
-    ifstream fin;
-    ofstream fout_formula;
+    ifstream fin_losses;
+    ofstream fout_lrs;
     ofstream fout2("MSE.txt");
     ofstream fout3("Interim results.txt");
     ofstream fout4("Test_results.txt");
-    srand(time(NULL));
+    //srand(time(NULL));
     setlocale(0, "");
-    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 4, nrang =3;
-    int n = 700, num_generals = 500, general;//700 500
+    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 2, nrang = 2, num_epochs = 3;
+    int n = 100, num_generals = 500, general;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
     double MSE, MSE_test;
     int switch_init = 0;
@@ -1408,15 +1738,10 @@ int main()
     string line;
 
 
-    double** x = new double* [num_obs];//строчки - наблюдения, столбцы - признаки для каждого наблюдения
-    for(i = 0; i < num_obs; i++)
+    double** x = new double* [num_epochs];//строчки - наблюдения, столбцы - признаки для каждого наблюдения
+    for(i = 0; i < num_epochs; i++)
     {
         x[i] = new double[num_var];
-    }
-    double** x_test = new double* [num_obs_test];
-    for(i = 0; i < num_obs_test; i++)
-    {
-        x_test[i] = new double[num_var];
     }
     double* fitness = new double[n*2];
     double* fitness_temp = new double[n];
@@ -1426,7 +1751,9 @@ int main()
     Tree* children = new Tree[n];
     int *index = new int[n*2];
     double *for_calc = new double[n*2];
-    double** rangs = new double* [nrang];//nodes, vars, errors
+    double *losses = new double[n*2];
+    double *losses_temp = new double[n];
+    double** rangs = new double* [nrang];//nodes, errors
     for(i = 0; i < nrang; i++)
     {
         rangs[i] = new double[n*2];
@@ -1437,31 +1764,48 @@ int main()
         rangs_temp[i] = new double[n];
     }
 
+    //эпохи
+    for(i = 0; i < num_epochs; i++)
+    {
+        x[i][0] = i+1;
+    }
 
     //synthetic_data(x, y, num_obs);
     init_population(switch_init, n, tree, depth);
-    Py_Initialize();
+
     for(i = 0; i < n; i++)
     {
-        fout.open("Formula.txt");
-        fout << tree[i].printExpression;//I STOPPED HERE
-        fout.close();
-        fitness_by_neural_network();
-        fin.open("Accuracy.txt");
-        if (fin.is_open())
-        {
-            while (getline(fin, line))
-            {
-                cout << i << " accuracy " << line << endl;
-            }
-        }
-        fin.close();
+        cout << tree[i].printExpression() << endl;
     }
+    fout_lrs.open("Lrs.txt");
+    for(i = 0; i < n; i++)
+    {
+        for(j = 0; j < num_epochs; j++)
+        {
+            fout_lrs << tree[i].evaluateExpression(x[j]) << '\t';
+        }
+        fout_lrs << endl;
+    }
+    fout_lrs.close();
+    Py_Initialize();
+    fitness_by_neural_network();
+    fin_losses.open("Losses.txt");
+    i = 0;
+    if (fin_losses.is_open())
+    {
+        while (getline(fin_losses, line))
+        {
+            losses[i] = stod(line);
+            i++;
+            cout << line << endl;
+        }
+    }
+    fin_losses.close();
     if (fit_switch == "formula")
     {
         for(i = 0; i < n; i++)
         {
-            fitness[i] = tree[i].count_fitness(tree[i].error(num_obs, x, y));
+            fitness[i] = tree[i].count_fitness(losses[i]);
         }
     }
     else if (fit_switch == "rang")
@@ -1472,19 +1816,10 @@ int main()
             for_calc[i] = tree[i].num_nodes;
         }
         count_rang_fitness(for_calc, rangs[0], n);
+        count_rang_fitness(losses, rangs[1], n);
         for(i = 0; i < n; i++)
         {
-            for_calc[i] = tree[i].CountVar();
-        }
-        count_rang_fitness(for_calc, rangs[1], n, true);
-        for(i = 0; i < n; i++)
-        {
-            for_calc[i] = tree[i].error(num_obs, x, y);
-        }
-        count_rang_fitness(for_calc, rangs[2], n);
-        for(i = 0; i < n; i++)
-        {
-            fitness[i] = no*rangs[0][i] + v*rangs[1][i] + e*rangs[2][i];
+            fitness[i] = no*rangs[0][i] + e*rangs[1][i];
         }
     }
 
@@ -1505,9 +1840,7 @@ int main()
         }*/
         tree[0].UpNumNodes();
         cout << "Лучший индивид " << tree[0].printExpression() << " " << tree[0].CountDepth(tree[0].root) << " " << tree[0].num_nodes<< endl;
-        cout << "Значение функции пригодности " << fitness[0] << " vars " << tree[0].CountVar() << endl;
-        MSE = tree[0].error(num_obs, x, y);
-        cout << "MSE " << MSE/num_obs << endl;
+        cout << "Значение функции пригодности " << fitness[0] << endl;
 
         /*for(i = 0; i < n; i++)
         {
@@ -1559,11 +1892,34 @@ int main()
                 cout << "Выражение " << children[i].printExpression() << endl;
             }
         }*/
+        fout_lrs.open("Lrs.txt");
+        for(i = 0; i < n; i++)
+        {
+            for(j = 0; j < num_epochs; j++)
+            {
+                fout_lrs << tree[i].evaluateExpression(x[j]) << '\t';
+            }
+            fout_lrs << endl;
+        }
+        fout_lrs.close();
+        fitness_by_neural_network();
+        fin_losses.open("Losses.txt");
+        i = 0;
+        if (fin_losses.is_open())
+        {
+            while (getline(fin_losses, line))
+            {
+                losses[i+n] = stod(line);
+                i++;
+                cout << line << endl;
+            }
+        }
+        fin_losses.close();
         if (fit_switch == "formula")
         {
             for(i = 0; i < n; i++)
             {
-                fitness[i+n] = children[i].count_fitness(children[i].error(num_obs, x, y));
+                fitness[i+n] = children[i].count_fitness(losses[i+n]);
             }
         }
         else if (fit_switch == "rang")
@@ -1579,38 +1935,19 @@ int main()
                 for_calc[i] = tree[i].num_nodes;
             }
             count_rang_fitness(for_calc, rangs[0], n*2);
-            for(i = 0; i < n; i++)
-            {
-                for_calc[i+n] = children[i].CountVar();
-            }
-            for(i = 0; i < n; i++)
-            {
-                for_calc[i] = tree[i].CountVar();
-            }
-            count_rang_fitness(for_calc, rangs[1], n*2, true);
-            for(i = 0; i < n; i++)
-            {
-                for_calc[i+n] = children[i].error(num_obs, x, y)/num_obs;
-            }
-            for(i = 0; i < n; i++)
-            {
-                for_calc[i] = tree[i].error(num_obs, x, y)/num_obs;
-            }
-            count_rang_fitness(for_calc, rangs[2], n*2);
+            count_rang_fitness(losses, rangs[1], n*2);
             for(i = 0; i < n*2; i++)
             {
-                fitness[i] = no*rangs[0][i] + v*rangs[1][i] + e*rangs[2][i];
+                fitness[i] = no*rangs[0][i] + e*rangs[1][i];
             }
         }
         cout << "fitness is counted" << endl;
         for (i = 0; i < n*2; i++)
             index[i] = i;
         quicksort(fitness, index, 0, n*2 - 1);
-        if(fit_switch == "rang")
-        {
-            reverse(fitness, fitness+n*2);
-            reverse(index, index+n*2);
-        }
+        //тут и ранг и обычная пригодность должна быть как можно меньше
+        reverse(fitness, fitness+n*2);
+        reverse(index, index+n*2);
         //отбор индивидов
         for (i = 0, k = n*2-1; i < n; i++,k--)
         {
@@ -1618,7 +1955,8 @@ int main()
             if (in < n)
             {
                 tree_temp[i].CloneTree(tree[in].root);
-                fitness_temp[i] = fitness[k];
+                fitness_temp[i] = fitness[k];//fitness перемешан, все остальное нет
+                losses_temp[i] = losses[in];
                 for(j = 0; j < nrang; j++)
                 {
                     rangs_temp[j][i] = rangs[j][in];
@@ -1628,6 +1966,7 @@ int main()
             {
                 tree_temp[i].CloneTree(children[in-n].root);
                 fitness_temp[i] = fitness[k];
+                losses_temp[i] = losses[in];
                 for(j = 0; j < nrang; j++)
                 {
                     rangs_temp[j][i] = rangs[j][in];
@@ -1638,35 +1977,17 @@ int main()
         {
             tree[i].CloneTree(tree_temp[i].root);
             fitness[i] = fitness_temp[i];
+            losses[i] = losses_temp[i];
             for(j = 0; j < nrang; j++)
             {
                 rangs[j][i] = rangs_temp[j][i];
             }
         }
         cout << "the best are found" << endl;
-        fout.close();
-        fout.open("Plotting.txt", std::ofstream::out | std::ofstream::trunc);
-        fout << "General " << general << "\tMSE " << MSE/num_obs << endl;
-        fout << tree[0].printExpression() << endl;
-        fout3 << "General " << general << "\tMSE " << MSE/num_obs << endl;
-        fout3 << tree[0].printExpression() << endl;
-        for (i = 0; i < num_obs; i++)
-        {
-            fout << y[i] << "\t";
-            fout << tree[0].evaluateExpression(x[i]) << endl;
-        }
-        fout2 << MSE/num_obs << endl;
     }
-    MSE_test = tree[0].error(num_obs_test, x_test, y_test);
-    cout << "MSE_test " << MSE_test/num_obs_test << endl;
-    fout4 << "MSE " << MSE_test/num_obs_test << endl;
-    for (i = 0; i < num_obs_test; i++)
-        {
-            fout4 << y_test[i] << "\t";
-            fout4 << tree[0].evaluateExpression(x_test[i]) << endl;
-        }
 
     Py_Finalize();
+    delete[] losses;
     for(i = 0; i < nrang; i++)
     {
         delete[] rangs[i];
@@ -1685,18 +2006,11 @@ int main()
     delete[] tree;
     delete[] tree_temp;
     delete[] index;
-    for(i = 0; i < num_obs_test; i++)
-    {
-        delete[] x_test[i];
-    }
-    delete[] x_test;
-    for(i = 0; i < num_obs; i++)
+    for(i = 0; i < num_epochs; i++)
     {
         delete[] x[i];
     }
     delete[] x;
-    fin.close();
-    fout_formula.close();
     fout2.close();
     fout3.close();
     fout4.close();
@@ -1705,5 +2019,4 @@ int main()
 
 // при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново??? в какой момент остановиться, ориентироваться на глубину мне кажется не очень хорошим решением
 // делать ограничения на максимальное количество узлов в дереве при селекции и частичной мутации, если дерево выходит за рамки, то пробовать снова, пока не получится 100 раз
-// запустить цикл и параллельно писать нейронную сеть
-
+// попытаться сделать так, чтоб если lr не может посчитаться, он не считался, сейчас вне зависимости от наличия переменной все сводится к заменам
