@@ -105,6 +105,8 @@ public:
 
     double evaluateExpression(double* x, Node* cur_el);
 
+    double evaluateExpressionForPython(double* x, Node* cur_el, int* valid);
+
     string printExpression();
 
     string printExpression(Node* cur_el);
@@ -470,9 +472,10 @@ double Tree::evaluateExpression(double* x, Node* cur_el)
     return 0.0;
 }
 
-double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-переменных нет, 1-переменные есть,но все ок, 2-переменные есть, выражение не определено
+double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* valid)//0-все ок, 1-не считается
 {
     string left_check, right_check;
+    int flag = 0, flag2 = 0;
     if (cur_el == nullptr) {return 0.0;}
     if (cur_el->type == 'c') {return cur_el->constant;}
     else if (cur_el->type == 'v')
@@ -482,20 +485,19 @@ double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-
     else if (cur_el->operation < 2000)
     {
         left_check = printExpression(cur_el->left);
-        if (check.find("x") == std::string::npos)
+        if (left_check.find("x") != std::string::npos)
         {
-            *flag = 0;
+            flag = 1;
         }
-        else {*flag = 1};
-        double ev_expression = evaluateExpression(x, cur_el->left);
-        if (*flag == 2)
+        double ev_expression = evaluateExpressionForPython(x, cur_el->left, valid);
+        if (*valid == 1)
             return 0.0;
         //if (isnan(ev_expression))
-        if (*flag == 0 && isinf(ev_expression)){ev_expression = MAX;}
-        else if (*flag == 1 && isinf(ev_expression))
+        if (flag == 0 && isinf(ev_expression)){ev_expression = MAX;}
+        else if (flag == 1 && isinf(ev_expression))
         {
-            *flag = 2;
-            retutn 0.0;
+            *valid = 1;
+            return 0.0;
         }
         switch(cur_el->operation)
         {
@@ -513,18 +515,22 @@ double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-
             }
             case 1003:
             {
-                if(*flag == 0 && ev_expression <= 0){ev_expression = MIN;}
-                else if (*flag == 1 && isinf(ev_expression))
+                if(flag == 0 && ev_expression <= 0){ev_expression = MIN;}
+                else if (flag == 1 && ev_expression <= 0)
                 {
-                    *flag = 2;
-                    retutn 0.0;
+                    *valid = 1;
+                    return 0.0;
                 }
                 return log(ev_expression);
             }
             case 1004:
             {
-                if(*flag == 0 && ev_expression == 0){ev_expression = MIN;}
-
+                if(flag == 0 && ev_expression == 0){ev_expression = MIN;}
+                else if (flag == 1 && ev_expression == 0)
+                {
+                    *valid = 1;
+                    return 0.0;
+                }
                 return 1./ev_expression;
             }
             case 1005:
@@ -535,19 +541,62 @@ double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-
     }
     else if (cur_el->operation < 3000)
     {
-        double left_value = evaluateExpression(x, cur_el->left);
-        double right_value = evaluateExpression(x, cur_el->right);
-        if (isinf(left_value)){left_value = MAX;}
-        if (isinf(right_value)){right_value = MAX;}
+        left_check = printExpression(cur_el->left);
+        if (left_check.find("x") != std::string::npos)
+        {
+            flag = 1;
+        }
+        double left_value = evaluateExpressionForPython(x, cur_el->left, valid);
+        if (*valid == 1)
+            return 0.0;
+        //if (isnan(ev_expression))
+        if (flag == 0 && isinf(left_value)){left_value = MAX;}
+        else if (flag == 1 && isinf(left_value))
+        {
+            *valid = 1;
+            return 0.0;
+        }
+
+        right_check = printExpression(cur_el->right);
+        if (right_check.find("x") != std::string::npos)
+        {
+            flag2 = 1;
+        }
+        double right_value = evaluateExpressionForPython(x, cur_el->right, valid);
+        if (*valid == 1)
+            return 0.0;
+        //if (isnan(ev_expression))
+        if (flag2 == 0 && isinf(right_value)){right_value = MAX;}
+        else if (flag2 == 1 && isinf(right_value))
+        {
+            *valid = 1;
+            return 0.0;
+        }
+
         switch (cur_el->operation)
         {
             case 2000:// слева основание
+            {
+                if (flag == 0 && left_value <= 0){left_value = MIN;}
+                else if (flag == 1 && left_value <= 0)
                 {
-                    if(left_value <= 0){left_value = MIN;}
-                    else if(left_value == 1){left_value = 0.9999999999999999;}//вот тут спросить
-                    if(right_value <= 0){right_value = MIN;}
-                    return log(right_value)/log(left_value);
+                    *valid = 1;
+                    return 0.0;
                 }
+                else if (flag == 0 && left_value == 1){left_value = 0.9999999999999999;}
+                else if (flag == 1 && left_value == 1)
+                {
+                   *valid = 1;
+                    return 0.0;
+                }
+                if (flag2 == 0 && right_value <= 0){right_value = MIN;}
+                else if (flag2 == 1 && right_value <= 0)
+                {
+                    *valid = 1;
+                    return 0.0;
+                }
+                return log(right_value)/log(left_value);
+            }
             case 2001:
                 return left_value +  right_value;
             case 2002:
@@ -555,16 +604,31 @@ double Tree::evaluateExpressionForPython(double* x, Node* cur_el, int* flag)//0-
             case 2003:
                 return left_value * right_value;
             case 2004:
+            {
+                if(flag2 == 0 && right_value == 0){right_value = MIN;}
+                else if (flag2 == 1 && right_value == 0)
                 {
-                    if(right_value == 0){right_value = MIN;}
-                    return left_value / right_value;
+                    *valid = 1;
+                    return 0.0;
                 }
+                return left_value / right_value;
+            }
             case 2005:
+            {
+                if(flag2 == 0 && left_value < 0){right_value = round(right_value);}
+                else if (flag2 == 1 && left_value < 0 && round(right_value) != right_value)
                 {
-                    if(left_value < 0){right_value = round(right_value);}
-                    if(left_value == 0 && right_value < 0){return 0.0;}
-                    return pow(left_value, right_value);
+                    *valid = 1;
+                    return 0.0;
                 }
+                if(flag == 0 && flag2 == 0 && left_value == 0 && right_value < 0){return 0.0;}
+                else if ((flag == 1 || flag2 == 1) && left_value == 0 && right_value < 0)
+                {
+                    *valid = 1;
+                    return 0.0;
+                }
+                return pow(left_value, right_value);
+            }
         }
     }
     else if (cur_el->operation >= 3000)
@@ -1724,10 +1788,10 @@ int main()
     ofstream fout4("Test_results.txt");
     //srand(time(NULL));
     setlocale(0, "");
-    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 2, nrang = 2, num_epochs = 3;
-    int n = 100, num_generals = 500, general;//700 500
+    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 2, nrang = 2, num_epochs = 3, valid;
+    int n = 10, num_generals = 500, general;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
-    double MSE, MSE_test;
+    double MSE, MSE_test, lr;
     int switch_init = 0;
     //0 - полный метод, 1 - метод выращивания
     string sel_switch = "prop";// prop, rang, tour, lex
@@ -1767,12 +1831,11 @@ int main()
     //эпохи
     for(i = 0; i < num_epochs; i++)
     {
-        x[i][0] = i+1;
+        x[i][0] = i;//ДОБАВЬ +1
     }
 
     //synthetic_data(x, y, num_obs);
     init_population(switch_init, n, tree, depth);
-
     for(i = 0; i < n; i++)
     {
         cout << tree[i].printExpression() << endl;
@@ -1782,7 +1845,12 @@ int main()
     {
         for(j = 0; j < num_epochs; j++)
         {
-            fout_lrs << tree[i].evaluateExpression(x[j]) << '\t';
+            valid = 0;
+            lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
+            if (valid == 0)
+                fout_lrs << lr << '\t';
+            else
+                fout_lrs << "-50000\t";
         }
         fout_lrs << endl;
     }
@@ -1801,11 +1869,13 @@ int main()
         }
     }
     fin_losses.close();
+    cout << "fitness\n";
     if (fit_switch == "formula")
     {
         for(i = 0; i < n; i++)
         {
             fitness[i] = tree[i].count_fitness(losses[i]);
+            cout << fitness[i] << endl;
         }
     }
     else if (fit_switch == "rang")
@@ -1892,12 +1962,21 @@ int main()
                 cout << "Выражение " << children[i].printExpression() << endl;
             }
         }*/
+        for(i = 0; i < n; i++)
+        {
+            cout << children[i].printExpression() << endl;
+        }
         fout_lrs.open("Lrs.txt");
         for(i = 0; i < n; i++)
         {
             for(j = 0; j < num_epochs; j++)
             {
-                fout_lrs << tree[i].evaluateExpression(x[j]) << '\t';
+                valid = 0;
+                lr = children[i].evaluateExpressionForPython(x[j], children[i].root, &valid);
+                if (valid == 0)
+                    fout_lrs << lr << '\t';
+                else
+                    fout_lrs << "-50000\t";
             }
             fout_lrs << endl;
         }
@@ -1915,11 +1994,13 @@ int main()
             }
         }
         fin_losses.close();
+        cout << "fitness\n";
         if (fit_switch == "formula")
         {
             for(i = 0; i < n; i++)
             {
                 fitness[i+n] = children[i].count_fitness(losses[i+n]);
+                cout << fitness[i+n] << endl;
             }
         }
         else if (fit_switch == "rang")
@@ -1945,9 +2026,12 @@ int main()
         for (i = 0; i < n*2; i++)
             index[i] = i;
         quicksort(fitness, index, 0, n*2 - 1);
-        //тут и ранг и обычная пригодность должна быть как можно меньше
-        reverse(fitness, fitness+n*2);
-        reverse(index, index+n*2);
+        if (fit_switch == "rang")
+        {
+            reverse(fitness, fitness+n*2);
+            reverse(index, index+n*2);
+        }
+
         //отбор индивидов
         for (i = 0, k = n*2-1; i < n; i++,k--)
         {
@@ -2019,4 +2103,6 @@ int main()
 
 // при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново??? в какой момент остановиться, ориентироваться на глубину мне кажется не очень хорошим решением
 // делать ограничения на максимальное количество узлов в дереве при селекции и частичной мутации, если дерево выходит за рамки, то пробовать снова, пока не получится 100 раз
-// попытаться сделать так, чтоб если lr не может посчитаться, он не считался, сейчас вне зависимости от наличия переменной все сводится к заменам
+// если обрабатывать подобные ошибки заменой на самое близкое возможное для расчета число, то просто замени evaluateExpressionForPython на evaluateExpression
+// если после проверки будет понятно, что для текущего индивида на одной из эпох learning rate не посчитается, то передавай в питоне в функцию true
+// если на определенной эпохе по текущей формуле learning rate не может посчитаться заменять его на заранее определенную константу,передавай в питоне в функцию false
