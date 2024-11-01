@@ -1,4 +1,4 @@
-#include <Python.h>
+//#include <Python.h>
 #include <iostream>
 #include <cmath>
 #include <random>
@@ -6,6 +6,8 @@
 #include <climits>
 #include <fstream>
 #include <algorithm>
+#include <string>
+#include <time.h>
 
 using namespace std;
 //глобальные переменные
@@ -667,7 +669,7 @@ string Tree::printExpression(Node* cur_el)
         else{check = to_string(cur_el->constant);}
         size_t comma {check.find(",")};
         if (comma != string::npos)
-            check.replace(comma, comma+1, ".");
+            check.replace(comma, 1, ".");
         return check;
     }
     else if (cur_el->type == 'v')
@@ -774,7 +776,7 @@ string Tree::printExpression(Node* cur_el)
         else{check = to_string(cur_el->constant);}
         size_t comma {check.find(",")};
         if (comma != string::npos)
-            check.replace(comma, comma+1, ".");
+            check.replace(comma, 1, ".");
         return check;
     }
     else if (cur_el->type == 'v')
@@ -795,7 +797,7 @@ string Tree::printExpression(Node* cur_el)
             {
                 check = to_string(MAX);
                 size_t comma {check.find(",")};
-                check.replace(comma, comma+1, ".");
+                check.replace(comma, 1, ".");
             }
         }
         switch(cur_el->operation)
@@ -833,7 +835,7 @@ string Tree::printExpression(Node* cur_el)
                 {
                     check = to_string(MIN);
                     size_t comma {check.find(",")};
-                    check.replace(comma, comma+1, ".");
+                    check.replace(comma, 1, ".");
                 }
                 return "log(" + check + ")";//натуральный логарифм
             }
@@ -843,7 +845,7 @@ string Tree::printExpression(Node* cur_el)
                 {
                     check = to_string(MIN);
                     size_t comma {check.find(",")};
-                    check.replace(comma, comma+1, ".");
+                    check.replace(comma, 1, ".");
                 }
                 if (check.find("(")==0)
                     return "1/" + check;
@@ -867,7 +869,7 @@ string Tree::printExpression(Node* cur_el)
             {
                 left_check = to_string(MAX);
                 size_t comma {left_check.find(",")};
-                left_check.replace(comma, comma+1, ".");
+                left_check.replace(comma, 1, ".");
             }
         }
         if (right_check.find("x") == std::string::npos)
@@ -878,7 +880,7 @@ string Tree::printExpression(Node* cur_el)
             {
                 right_check = to_string(MAX);
                 size_t comma {right_check.find(",")};
-                right_check.replace(comma, comma+1, ".");
+                right_check.replace(comma, 1, ".");
             }
         }
         switch (cur_el->operation)
@@ -889,14 +891,14 @@ string Tree::printExpression(Node* cur_el)
                 {
                     left_check = to_string(MIN);
                     size_t comma {left_check.find(",")};
-                    left_check.replace(comma, comma+1, ".");
+                    left_check.replace(comma, 1, ".");
                 }
                 else if(flag == 0 && left_value == 1){left_check = "0.9999999999999999";}
                 if(flag2 == 0 && right_value <= 0)
                 {
                     right_check = to_string(MIN);
                     size_t comma {right_check.find(",")};
-                    right_check.replace(comma, comma+1, ".");
+                    right_check.replace(comma, 1, ".");
                 }
                 return "log(" + right_check + "," + left_check + ")";
             }
@@ -912,7 +914,7 @@ string Tree::printExpression(Node* cur_el)
                 {
                     right_check = to_string(MIN);
                     size_t comma {right_check.find(",")};
-                    right_check.replace(comma, comma+1, ".");
+                    right_check.replace(comma, 1, ".");
                 }
                 return "(" + left_check + "/" + right_check + ")";
             }
@@ -924,7 +926,7 @@ string Tree::printExpression(Node* cur_el)
                     right_check = to_string(right_value);
                     size_t comma {right_check.find(",")};
                     if (comma != string::npos)
-                        right_check.replace(comma, comma+1, ".");
+                        right_check.replace(comma, 1, ".");
                 }
                 if(flag == 0 && flag2 == 0 && left_value == 0 && right_value < 0){return "0";}
                 return "(" + left_check + ")**" + "(" + right_check + ")";
@@ -963,9 +965,10 @@ double Tree::error(int num_obs, double** x, double* y)
 
 double Tree::count_fitness(double error)
 {
-    double e = 0.5, n = 5;
+    double e = 0.5, v = 1, n = 5, first_el = 1;
     UpNumNodes();
-    double fitness = 1./(1+e*error+n*double(num_nodes)/double(max_nodes));
+    int current_num_var = CountVar();
+    double fitness = 1./(1+v*first_el+e*error+n*double(num_nodes)/double(max_nodes)-v*current_num_var);
     if(isinf(fitness)){fitness = MAX;}
     return fitness;
 }
@@ -1575,7 +1578,7 @@ void selection (string sel_switch, double *fitness, int n, Tree* parents, Tree* 
     {
         int* winners;
         int* idx;
-        int criteria[3]{0, 1, 2};
+        int criteria[3]{0, 1, 2};//ВОТ ТУТ НАДО НЕ ЗАБЫВАТЬ МЕНЯТЬ
         for (fight = 0; fight < n*2; fight++)
         {
             //cout << "fight " << fight << endl;
@@ -1757,7 +1760,7 @@ void count_rang_fitness(double* arr, double* rang, int n, bool var = false)
     delete[] index;
 }
 
-void fitness_by_neural_network()
+/*void fitness_by_neural_network()
 {
     cout << "in function" << endl;
     char* filename = "C:\\Programs\\PycharmProjects\\neuron_network_QW\\main.py";
@@ -1769,37 +1772,79 @@ void fitness_by_neural_network()
         // Выполняем Python скрипт
         cout << "run" << endl;
         PyRun_SimpleFile(file, filename);
-        if (PyErr_Occurred()) {
-            PyErr_Print();  // Печать ошибки, если она возникла
+        cout << "return from Python" << endl;
+        if (PyErr_Occurred())
+        {
+            cout << "OPA" << endl;
+            PyObject *type, *value, *traceback;
+            PyErr_Fetch(&type, &value, &traceback);
+
+            // check if the exception is a TypeError
+            if (PyExc_TypeError && PyErr_ExceptionMatches(PyExc_TypeError))
+            {
+              // get the exception text as a UTF-8 encoded string
+              const char *exception_text = PyUnicode_AsUTF8(value);
+
+              // print the exception text
+              printf("Exception: %s\n", exception_text); // Печать ошибки, если она возникла
+            }
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
         }
-        fclose(file);  // Закрываем файл
-    } else {
-        cout << "Не удалось открыть файл " << filename << endl;
+        cout << "almost close" << endl;
+        fclose(file);
+        cout << "close" << endl;
     }
+    else cout << "Не удалось открыть файл " << filename << endl;
     cout << "almost out" << endl;
+
+}*/
+
+string fitness_by_neural_network()
+{
+    string filename = "python C:\\Programs\\PycharmProjects\\neuron_network_QW\\main.py ";
+    char buffer[1];
+    string result = "";
+    FILE* pipe = popen(filename.c_str(), "r");
+    if (!pipe) throw runtime_error("popen() failed!");
+    try
+    {
+        while(fread(buffer, sizeof(char), 1, pipe) > 0)
+        {
+            std::cout << buffer[0] << std::flush; // сразу выводим каждый символ
+            result += buffer[0];
+        }
+    }
+    catch (...)
+    {
+        pclose(pipe);
+        throw;
+    }
+    pclose(pipe);
+    return result;
 }
 
 int main()
 {
     ifstream fin_losses;
     ofstream fout_lrs;
-    ofstream fout2("MSE.txt");
-    ofstream fout3("Interim results.txt");
-    ofstream fout4("Test_results.txt");
-    //srand(time(NULL));
+    ofstream fout_log("Log.txt");
+    ofstream fout_testLoss("AllTestLoss.txt");
+    srand(time(NULL));
     setlocale(0, "");
-    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 2, nrang = 2, num_epochs = 3, valid;
+    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 5, valid;
     int n = 10, num_generals = 500, general;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
     double MSE, MSE_test, lr;
-    int switch_init = 0;
-    //0 - полный метод, 1 - метод выращивания
+    int switch_init = 0;//0 - полный метод, 1 - метод выращивания
     string sel_switch = "prop";// prop, rang, tour, lex
     string mut_switch = "part";// point, part
-    string fit_switch = "formula";// formula, rang
-    //string cross_switch = "stand";// stand, one
-    double no = 10, v = 1, e = 20;
+    string fit_switch = "rang";// formula, rang
+    double no = 1, v = 5, e = 10;
     string line;
+
+
 
 
     double** x = new double* [num_epochs];//строчки - наблюдения, столбцы - признаки для каждого наблюдения
@@ -1817,7 +1862,7 @@ int main()
     double *for_calc = new double[n*2];
     double *losses = new double[n*2];
     double *losses_temp = new double[n];
-    double** rangs = new double* [nrang];//nodes, errors
+    double** rangs = new double* [nrang];//nodes, vars, errors
     for(i = 0; i < nrang; i++)
     {
         rangs[i] = new double[n*2];
@@ -1831,7 +1876,7 @@ int main()
     //эпохи
     for(i = 0; i < num_epochs; i++)
     {
-        x[i][0] = i;//ДОБАВЬ +1
+        x[i][0] = i+1;//ДОБАВЬ +1
     }
 
     //synthetic_data(x, y, num_obs);
@@ -1839,6 +1884,7 @@ int main()
     for(i = 0; i < n; i++)
     {
         cout << tree[i].printExpression() << endl;
+        fout_log << tree[i].printExpression() << endl;
     }
     fout_lrs.open("Lrs.txt");
     for(i = 0; i < n; i++)
@@ -1855,27 +1901,32 @@ int main()
         fout_lrs << endl;
     }
     fout_lrs.close();
-    Py_Initialize();
-    fitness_by_neural_network();
+    //Py_Initialize();
+    unsigned int start = clock();
+    fout_log << fitness_by_neural_network();
+    cout << clock() - start << endl;
     fin_losses.open("Losses.txt");
     i = 0;
     if (fin_losses.is_open())
     {
         while (getline(fin_losses, line))
         {
+            //cout << line << endl;
+            size_t point {line.find(".")};
+            if (point != string::npos)
+                line.replace(point, 1, ",");
             losses[i] = stod(line);
             i++;
-            cout << line << endl;
+            //cout << line << endl;
+            //cout << losses[i-1] << endl;
         }
     }
     fin_losses.close();
-    cout << "fitness\n";
     if (fit_switch == "formula")
     {
         for(i = 0; i < n; i++)
         {
             fitness[i] = tree[i].count_fitness(losses[i]);
-            cout << fitness[i] << endl;
         }
     }
     else if (fit_switch == "rang")
@@ -1886,18 +1937,30 @@ int main()
             for_calc[i] = tree[i].num_nodes;
         }
         count_rang_fitness(for_calc, rangs[0], n);
-        count_rang_fitness(losses, rangs[1], n);
         for(i = 0; i < n; i++)
         {
-            fitness[i] = no*rangs[0][i] + e*rangs[1][i];
+            for_calc[i] = tree[i].CountVar();
+        }
+        count_rang_fitness(for_calc, rangs[1], n, true);
+        count_rang_fitness(losses, rangs[2], n);
+        for(i = 0; i < n; i++)
+        {
+            fitness[i] = no*rangs[0][i] + v*rangs[1][i] + e*rangs[2][i];
         }
     }
 
     //цикл поколений
     for(general = 0; general < num_generals; general++)
     {
-        cout << "General " << general << endl;
-
+        cout << "\nGeneral " << general << "\n" << endl;
+        fout_log << "\nGeneral " << general << "\n" << endl;
+        for(i = 0; i < n; i++)
+        {
+            cout << tree[i].printExpression() << endl;
+            fout_log << tree[i].printExpression() << endl;
+            cout << fitness[i] << endl;
+            fout_log << fitness[i] << endl;
+        }
         /*for(i = 0; i < n; i++)
         {
             cout << "Tree " << i <<endl;
@@ -1908,9 +1971,6 @@ int main()
             //cout << "Значение функции пригодности " << fitness[i] << " vars " << tree[i].CountVar() << endl;
             //cout << "MSE " << tree[i].error(num_obs, x, y) << endl;
         }*/
-        tree[0].UpNumNodes();
-        cout << "Лучший индивид " << tree[0].printExpression() << " " << tree[0].CountDepth(tree[0].root) << " " << tree[0].num_nodes<< endl;
-        cout << "Значение функции пригодности " << fitness[0] << endl;
 
         /*for(i = 0; i < n; i++)
         {
@@ -1924,6 +1984,7 @@ int main()
         }*/
         selection(sel_switch, fitness, n, parents, tree, rangs, nrang);
         cout << "selection is done" << endl;
+        fout_log << "selection is done" << endl;
         /*for(i = 0; i < n*2; i++)
         {
             cout << "Parent " << i <<endl;
@@ -1932,6 +1993,7 @@ int main()
         }*/
         crossover(n, parents, children);
         cout << "crossover is done" << endl;
+        fout_log << "crossover is done" << endl;
         /*if (general == 94)
         {
             for(i = 0; i < n; i++)
@@ -1953,6 +2015,7 @@ int main()
         }*/
         mutation(mut_switch, switch_init, n, children);
         cout << "mutation is done" << endl;
+        fout_log << "mutation is done" << endl;
         /*if (general == 94)
         {
             for(i = 0; i < n; i++)
@@ -1961,10 +2024,11 @@ int main()
                 //children[i].PrintTree();
                 cout << "Выражение " << children[i].printExpression() << endl;
             }
-        }*/
+        }*/;
         for(i = 0; i < n; i++)
         {
             cout << children[i].printExpression() << endl;
+            fout_log << children[i].printExpression() << endl;
         }
         fout_lrs.open("Lrs.txt");
         for(i = 0; i < n; i++)
@@ -1981,26 +2045,31 @@ int main()
             fout_lrs << endl;
         }
         fout_lrs.close();
-        fitness_by_neural_network();
+        fout_log << fitness_by_neural_network();
         fin_losses.open("Losses.txt");
         i = 0;
         if (fin_losses.is_open())
         {
             while (getline(fin_losses, line))
             {
+                //cout << line << endl;
+                size_t point {line.find(".")};
+                if (point != string::npos)
+                    line.replace(point, 1, ",");
                 losses[i+n] = stod(line);
                 i++;
-                cout << line << endl;
+                //cout << line << endl;
+                //cout << losses[i+n-1] << endl;
             }
         }
         fin_losses.close();
-        cout << "fitness\n";
         if (fit_switch == "formula")
         {
             for(i = 0; i < n; i++)
             {
                 fitness[i+n] = children[i].count_fitness(losses[i+n]);
                 cout << fitness[i+n] << endl;
+                fout_log << fitness[i+n] << endl;
             }
         }
         else if (fit_switch == "rang")
@@ -2016,13 +2085,25 @@ int main()
                 for_calc[i] = tree[i].num_nodes;
             }
             count_rang_fitness(for_calc, rangs[0], n*2);
-            count_rang_fitness(losses, rangs[1], n*2);
+            for(i = 0; i < n; i++)
+            {
+                for_calc[i+n] = children[i].CountVar();
+            }
+            for(i = 0; i < n; i++)
+            {
+                for_calc[i] = tree[i].CountVar();
+            }
+            count_rang_fitness(for_calc, rangs[1], n*2, true);
+            count_rang_fitness(losses, rangs[2], n*2);
             for(i = 0; i < n*2; i++)
             {
-                fitness[i] = no*rangs[0][i] + e*rangs[1][i];
+                fitness[i] = no*rangs[0][i] + v*rangs[1][i] + e*rangs[2][i];
+                cout << fitness[i] << endl;
+                fout_log << fitness[i] << endl;
             }
         }
         cout << "fitness is counted" << endl;
+        fout_log << "fitness is counted" << endl;
         for (i = 0; i < n*2; i++)
             index[i] = i;
         quicksort(fitness, index, 0, n*2 - 1);
@@ -2068,9 +2149,11 @@ int main()
             }
         }
         cout << "the best are found" << endl;
+        fout_log << "the best are found" << endl;
+        fout_testLoss << losses[0] << endl;
     }
 
-    Py_Finalize();
+    //Py_Finalize();
     delete[] losses;
     for(i = 0; i < nrang; i++)
     {
@@ -2095,14 +2178,14 @@ int main()
         delete[] x[i];
     }
     delete[] x;
-    fout2.close();
-    fout3.close();
-    fout4.close();
+    fout_log.close();
+    fout_testLoss.close();
 }
 
 
-// при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново??? в какой момент остановиться, ориентироваться на глубину мне кажется не очень хорошим решением
-// делать ограничения на максимальное количество узлов в дереве при селекции и частичной мутации, если дерево выходит за рамки, то пробовать снова, пока не получится 100 раз
+// при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново???
+//
 // если обрабатывать подобные ошибки заменой на самое близкое возможное для расчета число, то просто замени evaluateExpressionForPython на evaluateExpression
 // если после проверки будет понятно, что для текущего индивида на одной из эпох learning rate не посчитается, то передавай в питоне в функцию true
 // если на определенной эпохе по текущей формуле learning rate не может посчитаться заменять его на заранее определенную константу,передавай в питоне в функцию false
+// если learning rate слишком большой, то заменять его на возможное самое большое число
