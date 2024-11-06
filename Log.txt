@@ -1,10 +1,469 @@
-(-(-0.414089))
-exp(x00*0.413464)
-((x00*x00)*cos(x00))
-ln(exp(x00))
-(-(x00+x00))
-(sin(x00)/exp(x00))
-exp(x00-x00)
-(exp(0.077222)/log(x00, (-0.666948)))
-((-1.136449))^((x00)^((-0.964318)))
-(1/(-1.782745)+(x00-x00))
+ln(1/(x00))
+((x00)^(x00))^(ln(0.225568))
+ln(cos(2.539330))
+cos(exp(0.145927))
+(1/(x00)-(x00+(-0.218056)))
+From C++ to C++ 203
+
+General 0
+
+ln(1/(x00))
+67
+((x00)^(x00))^(ln(0.225568))
+29.5
+ln(cos(2.539330))
+67
+cos(exp(0.145927))
+37
+(1/(x00)-(x00+(-0.218056)))
+39.5
+selection is done
+crossover is done
+mutation is done
+ln(1/(x00)^(x00))
+ln(1/(1/(x00)))
+(1/(x00))^(ln(0.225568))
+ln(cos(1/(x00)))
+cos(ln((-0.432501)))
+From C++ to C++ 195
+37.5
+44.5
+87.5
+97.5
+114.5
+147.5
+80.5
+87.5
+98
+85
+fitness is counted
+the best are found
+
+General 1
+
+ln(1/(x00))
+37.5
+((x00)^(x00))^(ln(0.225568))
+44.5
+ln(1/(1/(x00)))
+80.5
+cos(ln((-0.432501)))
+85
+ln(cos(2.539330))
+87.5
+selection is done
+crossover is done
+mutation is done
+ln(ln((-0.432501)))
+ln(cos(1/(1/(x00))))
+ln(1/(2.539330))
+cos(ln(1/(x00)))
+ln(cos(x00))
+From C++ to C++ 195
+38.5
+50
+67.5
+113.5
+43.5
+143.5
+121.5
+126
+82.5
+93.5
+fitness is counted
+the best are found
+
+General 2
+
+ln(1/(x00))
+38.5
+ln(cos(2.539330))
+43.5
+((x00)^(x00))^(ln(0.225568))
+50
+ln(1/(1/(x00)))
+67.5
+cos(ln(1/(x00)))
+82.5
+selection is done
+crossover is done
+mutation is done
+ln(1/(x00))
+cos(ln((-(-0.666948))))
+cos(x00)^(x00)
+ln(cos(x00))
+((x00)^(x00))^((x00)^(x00))
+From C++ to C++ 199
+35
+85
+44
+56.5
+111.5
+130
+84
+96.5
+107.5
+130
+fitness is counted
+the best are found
+
+General 3
+
+ln(1/(x00))
+35
+((x00)^(x00))^(ln(0.225568))
+44
+ln(1/(1/(x00)))
+56.5
+cos(ln((-(-0.666948))))
+84
+ln(cos(2.539330))
+85
+selection is done
+crossover is done
+mutation is done
+ln(2.539330)
+ln(cos(1/(x00)))
+((x00)^(x00))^(ln((-0.666948)))
+ln(cos(-0.666948))
+ln(1/(-0.666948))
+From C++ to C++ 191
+38.5
+69.5
+77
+107
+33.5
+81
+122
+94.5
+118.5
+138.5
+fitness is counted
+the best are found
+
+General 4
+
+ln(cos(2.539330))
+33.5
+ln(1/(x00))
+38.5
+((x00)^(x00))^(ln(0.225568))
+69.5
+ln(1/(1/(x00)))
+77
+ln(2.539330)
+81
+selection is done
+crossover is done
+mutation is done
+(((-0.964318))^(1.136449))^(2.539330)
+((x00)^(x00))^(ln(1/(x00)))
+ln(0.225568)
+ln(x00)
+ln(0.225568)
+From C++ to C++ 190
+75.5
+35.5
+44
+44.5
+70
+138
+122.5
+135
+82.5
+132.5
+fitness is counted
+the best are found
+
+General 5
+
+ln(1/(x00))
+35.5
+((x00)^(x00))^(ln(0.225568))
+44
+ln(1/(1/(x00)))
+44.5
+ln(2.539330)
+70
+ln(cos(2.539330))
+75.5
+selection is done
+crossover is done
+mutation is done
+ln(cos(2.539330))
+ln(x00)
+ln(cos(2.539330))
+ln(cos(x00))
+ln((-1.782745))
+From C++ to C++ 192
+51
+60
+59
+62
+26
+146
+104.5
+148.5
+108.5
+114.5
+fitness is counted
+the best are found
+
+General 6
+
+ln(cos(2.539330))
+26
+ln(1/(x00))
+51
+ln(1/(1/(x00)))
+59
+((x00)^(x00))^(ln(0.225568))
+60
+ln(2.539330)
+62
+selection is done
+crossover is done
+mutation is done
+ln(cos(2.539330))
+ln((x00/0.702030))
+ln(1/(sin(x00)))
+ln(cos(1/(x00)))
+ln(1/(x00))
+From C++ to C++ 208
+81
+33.5
+52.5
+37.5
+48.5
+153.5
+112.5
+117.5
+122.5
+121
+fitness is counted
+the best are found
+
+General 7
+
+ln(1/(x00))
+33.5
+((x00)^(x00))^(ln(0.225568))
+37.5
+ln(2.539330)
+48.5
+ln(1/(1/(x00)))
+52.5
+ln(cos(2.539330))
+81
+selection is done
+crossover is done
+mutation is done
+ln(1/(1/(2.539330)))
+ln(1/(1/(1/(1/(x00)))))
+ln(2.539330)
+ln(2.539330)
+ln(cos(x00))
+From C++ to C++ 193
+50
+77
+79.5
+45
+22.5
+97.5
+129.5
+112
+132
+135
+fitness is counted
+the best are found
+
+General 8
+
+ln(cos(2.539330))
+22.5
+ln(1/(1/(x00)))
+45
+ln(1/(x00))
+50
+((x00)^(x00))^(ln(0.225568))
+77
+ln(2.539330)
+79.5
+selection is done
+crossover is done
+mutation is done
+ln(1/(1/(x00)))
+ln(x00)
+((x00)^(x00))^(ln(0.225568))
+ln(1/(1/(x00)))
+ln(2.539330)
+From C++ to C++ 193
+94.5
+77
+39.5
+47
+49.5
+157
+137
+59.5
+107
+112
+fitness is counted
+the best are found
+
+General 9
+
+ln(1/(x00))
+39.5
+((x00)^(x00))^(ln(0.225568))
+47
+ln(2.539330)
+49.5
+((x00)^(x00))^(ln(0.225568))
+59.5
+ln(1/(1/(x00)))
+77
+selection is done
+crossover is done
+mutation is done
+ln(1/(x00))
+ln(1/(x00))
+ln(1/(1/(x00)))
+(x00)^(cos(-0.930506))
+(ln(0.225568))^(ln(x00))
+From C++ to C++ 192
+48
+57
+68.5
+79.5
+21
+153
+138
+116
+121
+78
+fitness is counted
+the best are found
+
+General 10
+
+ln(1/(1/(x00)))
+21
+ln(1/(x00))
+48
+((x00)^(x00))^(ln(0.225568))
+57
+ln(2.539330)
+68.5
+(ln(0.225568))^(ln(x00))
+78
+selection is done
+crossover is done
+mutation is done
+(0.225568)^(ln(0.225568))
+((x00)^(x00))^(1/(x00))
+(ln(x00))^(ln(x00))
+ln(1/(ln(x00)))
+ln(2.539330)
+From C++ to C++ 192
+90
+33
+42
+44
+112.5
+135
+124.5
+97.5
+127.5
+74
+fitness is counted
+the best are found
+
+General 11
+
+ln(1/(x00))
+33
+((x00)^(x00))^(ln(0.225568))
+42
+ln(2.539330)
+44
+ln(2.539330)
+74
+ln(1/(1/(x00)))
+90
+selection is done
+crossover is done
+mutation is done
+ln((-x00))
+ln(1/(1/(x00)))
+ln(x00)
+ln(1/(1/(x00/0.442498)))
+((1/(x00))^(x00))^(ln(0.225568))
+From C++ to C++ 155
+49.5
+53.5
+57
+107
+21.5
+154.5
+111.5
+92
+113.5
+120
+fitness is counted
+the best are found
+
+General 12
+
+ln(1/(1/(x00)))
+21.5
+ln(1/(x00))
+49.5
+((x00)^(x00))^(ln(0.225568))
+53.5
+ln(2.539330)
+57
+ln(x00)
+92
+selection is done
+crossover is done
+mutation is done
+((-0.328593))^(ln(0.225568))
+((x00)^(x00))^(ln(0.225568))
+(x00)^(ln(0.225568))
+ln(2.539330)
+ln(ln(0.225568))
+From C++ to C++ 191
+102
+44.5
+62
+64.5
+87
+147
+64.5
+72
+97
+139.5
+fitness is counted
+the best are found
+
+General 13
+
+ln(1/(x00))
+44.5
+((x00)^(x00))^(ln(0.225568))
+62
+ln(2.539330)
+64.5
+((x00)^(x00))^(ln(0.225568))
+64.5
+(x00)^(ln(0.225568))
+72
+selection is done
+crossover is done
+mutation is done
+ln(x00)
+((x00)^(ln(0.225568)))^(ln(0.225568))
+((0.225568)^(x00))^(ln(0.225568))
+((1/(x00))^(x00))^(ln(0.225568))
+((x00)^(x00))^(ln(2.539330))

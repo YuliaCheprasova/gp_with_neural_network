@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1730134373 source:c:\programs\disk_c\codeblocks_projects\gp_with_neural_network\main.cpp
+1730874735 source:c:\programs\disk_c\codeblocks_projects\gp_with_neural_network\main.cpp
 	<iostream>
 	<cmath>
 	<random>
@@ -9,6 +9,7 @@
 	<algorithm>
 	<string>
 	<time.h>
+	"windows.h"
 
 1712649018 c:\users\Юлия\appdata\local\programs\python\python312\include\python.h
 	"patchlevel.h"

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <string>
 #include <time.h>
+#include "windows.h"
 
 using namespace std;
 //глобальные переменные
@@ -194,7 +195,7 @@ void Tree::CloneTree(Node* origin_root)
 //не забывай менять тут
 int Tree::CountVar()
 {
-    int current_num_var;
+    int current_num_var = 0;
     string expression = printExpression();
     if (expression.find("x00") != std::string::npos)
         current_num_var++;
@@ -733,7 +734,7 @@ string Tree::printExpression(Node* cur_el)
         switch (cur_el->operation)
         {
             case 2000:
-                return "log(" + left_value + ", " + right_value + ")";
+                return "log(" + right_value + ", " + left_value + ")";
             case 2001:
                 return "(" + left_value + "+" + right_value + ")";
             case 2002:
@@ -743,7 +744,7 @@ string Tree::printExpression(Node* cur_el)
             case 2004:
                 return "(" + left_value + "/" + right_value + ")";
             case 2005:
-                return "(" + left_value + ")^" + "(" + right_value + ")";
+                return "(" + left_value + ")**" + "(" + right_value + ")";
         }
     }
     else if (cur_el->operation >= 3000)
@@ -955,9 +956,9 @@ double Tree::error(int num_obs, double** x, double* y)
     for(obs = 0; obs < num_obs; obs++)
     {
         check = evaluateExpression(x[obs]);
-        //if (isnan(check)||check == inf)
-            //check = 0;
         res+=(y[obs]-check)*(y[obs]-check);
+        if (isinf(res))
+            res = MAX;
     }
     //cout << "see" << endl;
     return res;
@@ -1803,7 +1804,7 @@ void count_rang_fitness(double* arr, double* rang, int n, bool var = false)
 
 string fitness_by_neural_network()
 {
-    string filename = "python C:\\Programs\\PycharmProjects\\neuron_network_QW\\main.py ";
+    string filename = "python -u C:\\Programs\\PycharmProjects\\neuron_network_QW\\main.py ";
     char buffer[1];
     string result = "";
     FILE* pipe = popen(filename.c_str(), "r");
@@ -1829,12 +1830,15 @@ int main()
 {
     ifstream fin_losses;
     ofstream fout_lrs;
-    ofstream fout_log("Log.txt");
+    ofstream fout_log("Log_C++.txt");
     ofstream fout_testLoss("AllTestLoss.txt");
-    srand(time(NULL));
+    ofstream fout_status;
+    ifstream fin_status;
+    //fout_lrs.open("Lrs.txt");
+    //srand(time(NULL));
     setlocale(0, "");
     int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 5, valid;
-    int n = 10, num_generals = 500, general;//700 500
+    int n = 50, num_generals = 500, general, status = 1;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
     double MSE, MSE_test, lr;
     int switch_init = 0;//0 - полный метод, 1 - метод выращивания
@@ -1843,6 +1847,9 @@ int main()
     string fit_switch = "rang";// formula, rang
     double no = 1, v = 5, e = 10;
     string line;
+    unsigned int start_time, end_time;
+    char symbol;
+    bool parallel = true;
 
 
 
@@ -1873,12 +1880,20 @@ int main()
         rangs_temp[i] = new double[n];
     }
 
+
+    if (parallel)
+    {
+        fout_status.open("Status.txt");
+        fout_status << 0 << endl;
+        fout_status.close();
+    }
+
     //эпохи
     for(i = 0; i < num_epochs; i++)
     {
         x[i][0] = i+1;//ДОБАВЬ +1
     }
-
+    Sleep(10000);
     //synthetic_data(x, y, num_obs);
     init_population(switch_init, n, tree, depth);
     for(i = 0; i < n; i++)
@@ -1894,17 +1909,52 @@ int main()
             valid = 0;
             lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
             if (valid == 0)
+            {
                 fout_lrs << lr << '\t';
+                cout << lr << '\t';
+            }
             else
+            {
                 fout_lrs << "-50000\t";
+                cout << "-50000\t";
+            }
         }
         fout_lrs << endl;
+        cout << endl;
     }
     fout_lrs.close();
-    //Py_Initialize();
-    unsigned int start = clock();
-    fout_log << fitness_by_neural_network();
-    cout << clock() - start << endl;
+    if (parallel)
+    {
+        fout_status.open("Status.txt");
+        fout_status << 1 << endl;
+        fout_status.close();
+        start_time = clock();
+        fin_status.open("Status.txt");
+        while (status == 1)
+        {
+            Sleep(1000);
+            //getline(fin_status, line);
+            fin_status.get(symbol);
+            fin_status.seekg(0);
+            if (symbol == '0' || symbol == '1')
+                status = symbol - '0';
+            else
+                continue;
+            //cout << symbol;
+            //cout << status << endl;
+        }
+        fin_status.close();
+        //fout_log << fitness_by_neural_network();
+        end_time = clock();
+    }
+    if(parallel == false)
+    {
+        start_time = clock();
+        fout_log << fitness_by_neural_network();
+        end_time = clock();
+    }
+    cout << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
+    fout_log << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
     fin_losses.open("Losses.txt");
     i = 0;
     if (fin_losses.is_open())
@@ -2024,7 +2074,7 @@ int main()
                 //children[i].PrintTree();
                 cout << "Выражение " << children[i].printExpression() << endl;
             }
-        }*/;
+        }*/
         for(i = 0; i < n; i++)
         {
             cout << children[i].printExpression() << endl;
@@ -2045,7 +2095,37 @@ int main()
             fout_lrs << endl;
         }
         fout_lrs.close();
-        fout_log << fitness_by_neural_network();
+        if (parallel)
+        {
+            fout_status.open("Status.txt");
+            fout_status << 1 << endl;
+            fout_status.close();
+            status = 1;
+            start_time = clock();
+            fin_status.open("Status.txt");
+            while (status == 1)
+            {
+                Sleep(1000);
+                //getline(fin_status, line);
+                fin_status.get(symbol);
+                fin_status.seekg(0);
+                if (symbol == '0' || symbol == '1')
+                    status = symbol - '0';
+                else
+                    continue;
+                //cout << status << endl;
+            }
+            fin_status.close();
+            end_time = clock();
+        }
+        if(parallel == false)
+        {
+            start_time = clock();
+            fout_log << fitness_by_neural_network();
+            end_time = clock();
+        }
+        cout << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
+        fout_log << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
         fin_losses.open("Losses.txt");
         i = 0;
         if (fin_losses.is_open())
@@ -2180,6 +2260,7 @@ int main()
     delete[] x;
     fout_log.close();
     fout_testLoss.close();
+
 }
 
 
