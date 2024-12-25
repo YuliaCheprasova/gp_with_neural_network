@@ -122,7 +122,7 @@ public:
 
     void Growth(int switch_init, int depth, Node*& cur_el, int target_nodes, int d, bool notmut);
 
-    void PointMut(Node* cur_el);
+    void PointMut(Node* cur_el, int mut_node, int* current_node);
 
     void PartMut(int switch_init, Node*& cur_el, int depth, int mut_node, int* current_node, int* d, int* flag);
 
@@ -1120,13 +1120,14 @@ void Tree::Growth(int switch_init, int depth, Node*& cur_el, int target_nodes = 
     }
 }
 
-void Tree::PointMut(Node* cur_el)
+void Tree::PointMut(Node* cur_el, int mut_node, int* current_node)
 {
-    double p = 0.01, mut, before, random_const;
+    double before, random_const;
     int random_opervar;
     if(cur_el==NULL){return;}
-    mut = ((double) rand() / (double)(RAND_MAX));
-    if (mut <= p)
+    *current_node += 1;
+    if (*current_node > mut_node){return;}
+    if (*current_node == mut_node)
     {
         if(cur_el->type=='o')
         {
@@ -1179,9 +1180,9 @@ void Tree::PointMut(Node* cur_el)
         //cout << "Mutation "<< before << endl;
         //cout << endl;
     }
-    PointMut(cur_el->left);
-    PointMut(cur_el->mid);
-    PointMut(cur_el->right);
+    PointMut(cur_el->left, mut_node, current_node);
+    PointMut(cur_el->mid, mut_node, current_node);
+    PointMut(cur_el->right, mut_node, current_node);
 
 }
 
@@ -1622,46 +1623,46 @@ void selection (string sel_switch, double *fitness, int n, Tree* parents, Tree* 
 
 void mutation(string mut_switch, int switch_init, int n, Tree *children)
 {
-    double mut, p = 0.2;
     int i, flag = 0, depth, mut_node, j, curr_node, depth2, d;
     Tree temp;
     if(mut_switch == "point")
     {
         for (i = 0; i< n; i++)
         {
-            children[i].PointMut(children[i].root);
+            children[i].UpNumNodes();
+            if (children[i].num_nodes == 1)
+                mut_node = 0;
+            else mut_node = rand() % (children[i].num_nodes-1)+1;
+            curr_node = -1;
+            children[i].PointMut(children[i].root, mut_node, &curr_node);
         }
     }
     if(mut_switch == "part")
     {
         for (i = 0; i < n; i++)
         {
-            mut = ((double) rand() / (double)(RAND_MAX));
-            if(mut < p)
+            //cout << i << " before " << children[i].printExpression() << endl;
+            children[i].UpNumNodes();
+            if (children[i].num_nodes == 1)
+                mut_node = 0;
+            else mut_node = rand() % (children[i].num_nodes-1)+1;
+            depth = children[i].CountDepth(children[i].root);
+            flag = 0;
+            curr_node = -1;
+            temp.CloneTree(children[i].root);
+            temp.UpNumNodes();
+            temp.PartMut(switch_init, temp.root, depth, mut_node, &curr_node, &d, &flag);
+            temp.UpNumNodes();
+            if (temp.num_nodes >= 200)
             {
-                //cout << i << " before " << children[i].printExpression() << endl;
-                children[i].UpNumNodes();
-                if (children[i].num_nodes == 1)
-                    mut_node = 0;
-                else mut_node = rand() % (children[i].num_nodes-1)+1;
-                depth = children[i].CountDepth(children[i].root);
-                flag = 0;
-                curr_node = -1;
-                temp.CloneTree(children[i].root);
-                temp.UpNumNodes();
-                temp.PartMut(switch_init, temp.root, depth, mut_node, &curr_node, &d, &flag);
-                temp.UpNumNodes();
-                if (temp.num_nodes >= 200)
-                {
-                    cout << i << " got " << temp.num_nodes << endl;
-                }
-                children[i].CloneTree(temp.root);
-                depth2 = children[i].CountDepth(children[i].root);
-                //cout << i << " after " << children[i].printExpression() << endl;
-                if (depth2 > depth)
-                    cout << "HERE________________________________________________________________________________________________";
-                //cout << i << " done" << endl;
+                cout << i << " got " << temp.num_nodes << endl;
             }
+            children[i].CloneTree(temp.root);
+            depth2 = children[i].CountDepth(children[i].root);
+            //cout << i << " after " << children[i].printExpression() << endl;
+            if (depth2 > depth)
+                cout << "HERE________________________________________________________________________________________________";
+            //cout << i << " done" << endl;
         }
         temp.ClearTree(temp.root);
     }
@@ -1826,6 +1827,12 @@ string fitness_by_neural_network()
     return result;
 }
 
+get_lrs()
+{
+
+}
+
+
 int main()
 {
     ifstream fin_losses;
@@ -1837,23 +1844,22 @@ int main()
     //fout_lrs.open("Lrs.txt");
     //srand(time(NULL));
     setlocale(0, "");
-    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 5, valid;
-    int n = 50, num_generals = 500, general, status = 1;//700 500
+    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 3, valid, ind_cuda, remaind;
+    int n = 5, num_generals = 500, general, status = 1, n_cuda = 2;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
     double MSE, MSE_test, lr;
     int switch_init = 0;//0 - полный метод, 1 - метод выращивани€
     string sel_switch = "prop";// prop, rang, tour, lex
     string mut_switch = "part";// point, part
     string fit_switch = "rang";// formula, rang
-    double no = 1, v = 5, e = 10;
-    string line;
-    unsigned int start_time, end_time;
+    double no = 1, v = 2, e = 20;
+    string line, filename;
+    unsigned int start_time, end_time, start_program, end_program;
     char symbol;
-    bool parallel = true;
+    bool cuda = true;//чтобы включить параллельный режим без cuda, поставь n_cuda =1, если Ќ≈параллельный режим то тоже надо 1 поставить
 
 
-
-
+    start_program = clock();
     double** x = new double* [num_epochs];//строчки - наблюдени€, столбцы - признаки дл€ каждого наблюдени€
     for(i = 0; i < num_epochs; i++)
     {
@@ -1879,20 +1885,46 @@ int main()
     {
         rangs_temp[i] = new double[n];
     }
-
-
-    if (parallel)
+    int* ind_cuda = new int[n_cuda];
+    double** lrs = new double*[n];
+    for(i = 0; i < n; i++)
     {
-        fout_status.open("Status.txt");
-        fout_status << 0 << endl;
-        fout_status.close();
+        lrs[i] = new double[num_epochs];
+    }
+
+
+
+    if (cuda)
+    {
+        for(k = 0; k < n_cuda; k++)
+        {
+            filename = "Status" + to_string(k+1) + ".txt";
+            fout_status.open(filename);
+            fout_status << 0 << endl;
+            fout_status.close();
+        }
     }
 
     //эпохи
     for(i = 0; i < num_epochs; i++)
     {
-        x[i][0] = i+1;//ƒќЅј¬№ +1
+        x[i][0] = i+1;
     }
+
+    ind_cuda[0] = 27;// 145
+    ind_cuda[1] = 9; // 49
+    ind_cuda[2] = 14; // Yulia
+    for(i = 0; i < n_cuda; i++)
+    {
+        sum_ind+=ind_cuda[i];
+        fout_log << i+1 << " " << ind_cuda[i] << endl;
+    }
+    if(sum_ind!=n)
+    {
+        cout << "AMOUNT OF DISTRIBUTED INDIVIDUALS DOES NOT EQUAL THEIR NUMBER!!!" << endl;
+        return(0);
+    }
+
     Sleep(10000);
     //synthetic_data(x, y, num_obs);
     init_population(switch_init, n, tree, depth);
@@ -1901,53 +1933,98 @@ int main()
         cout << tree[i].printExpression() << endl;
         fout_log << tree[i].printExpression() << endl;
     }
-    fout_lrs.open("Lrs.txt");
-    for(i = 0; i < n; i++)
+    get_lrs();
+    s_interval = 0;
+    f_interval = ind_cuda[0];
+    for(k = 0; k < n_cuda; k++)
     {
-        for(j = 0; j < num_epochs; j++)
+        filename = "Lrs" + to_string(k+1) + ".txt";
+        fout_lrs.open(filename);
+        for(i = s_interval; i < f_interval; i++)
         {
-            valid = 0;
-            lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
-            if (valid == 0)
+            for(j = 0; j < num_epochs; j++)
             {
-                fout_lrs << lr << '\t';
-                cout << lr << '\t';
+                valid = 0;
+                lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
+                if (valid == 0 && !(isinf(lr)))
+                {
+                    fout_lrs << lr*0.001 << '\t';
+                    //cout << lr << '\t';
+                }
+                else
+                {
+                    fout_lrs << "-50000\t";
+                    //cout << "-50000\t";
+                }
             }
-            else
-            {
-                fout_lrs << "-50000\t";
-                cout << "-50000\t";
-            }
+            fout_lrs << endl;
+            //cout << endl;
         }
-        fout_lrs << endl;
-        cout << endl;
+        /*if(k+1 == n_cuda && remaind != 0)
+        {
+            for(i = (k+1)*ind_cuda; i < (k+1)*ind_cuda+remaind; i++)
+            {
+                for(j = 0; j < num_epochs; j++)
+                {
+                    valid = 0;
+                    lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
+                    if (valid == 0)
+                    {
+                        fout_lrs << lr*0.001 << '\t';
+                        //cout << lr << '\t';
+                    }
+                    else
+                    {
+                        fout_lrs << "-50000\t";
+                        //cout << "-50000\t";
+                    }
+                }
+                fout_lrs << endl;
+                //cout << endl;
+            }
+        }*/
+        fout_lrs.close();
+        cout << "Lrs is closed" << endl;
+        if(k!=n_cuda-1)
+        {
+            s_interval += ind_cuda[k];
+            f_interval += ind_cuda[k+1];
+        }
     }
-    fout_lrs.close();
-    if (parallel)
+    if (cuda)
     {
-        fout_status.open("Status.txt");
-        fout_status << 1 << endl;
-        fout_status.close();
-        start_time = clock();
-        fin_status.open("Status.txt");
-        while (status == 1)
+        for(k = 0; k < n_cuda; k++)
         {
-            Sleep(1000);
-            //getline(fin_status, line);
-            fin_status.get(symbol);
-            fin_status.seekg(0);
-            if (symbol == '0' || symbol == '1')
-                status = symbol - '0';
-            else
-                continue;
-            //cout << symbol;
-            //cout << status << endl;
+            filename = "Status" + to_string(k+1) + ".txt";
+            fout_status.open(filename);
+            fout_status << 1 << endl;
+            fout_status.close();
         }
-        fin_status.close();
-        //fout_log << fitness_by_neural_network();
+        start_time = clock();
+        for(k = 0; k < n_cuda; k++)
+        {
+            status = 1;
+            filename = "Status" + to_string(k+1) + ".txt";
+            fin_status.open(filename);
+            while (status == 1)
+            {
+                Sleep(100);
+                //getline(fin_status, line);
+                fin_status.get(symbol);
+                fin_status.seekg(0);
+                if (symbol == '0' || symbol == '1')
+                    status = symbol - '0';
+                else
+                    continue;
+                //cout << symbol;
+                //cout << status << endl;
+            }
+            fin_status.close();
+            //fout_log << fitness_by_neural_network();
+        }
         end_time = clock();
     }
-    if(parallel == false)
+    if(cuda == false)
     {
         start_time = clock();
         fout_log << fitness_by_neural_network();
@@ -1955,23 +2032,28 @@ int main()
     }
     cout << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
     fout_log << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
-    fin_losses.open("Losses.txt");
     i = 0;
-    if (fin_losses.is_open())
+    for(k = 0; k < n_cuda; k++)
     {
-        while (getline(fin_losses, line))
+        filename = "Losses" + to_string(k+1) + ".txt";
+        fin_losses.open(filename);
+        if (fin_losses.is_open())
         {
-            //cout << line << endl;
-            size_t point {line.find(".")};
-            if (point != string::npos)
-                line.replace(point, 1, ",");
-            losses[i] = stod(line);
-            i++;
-            //cout << line << endl;
-            //cout << losses[i-1] << endl;
+            cout << "Open Losses" << endl;
+            while (getline(fin_losses, line))
+            {
+                //cout << line << endl;
+                size_t point {line.find(".")};
+                if (point != string::npos)
+                    line.replace(point, 1, ",");
+                losses[i] = stod(line);
+                i++;
+                //cout << line << endl;
+                //cout << losses[i-1] << endl;
+            }
         }
+        fin_losses.close();
     }
-    fin_losses.close();
     if (fit_switch == "formula")
     {
         for(i = 0; i < n; i++)
@@ -2080,45 +2162,98 @@ int main()
             cout << children[i].printExpression() << endl;
             fout_log << children[i].printExpression() << endl;
         }
-        fout_lrs.open("Lrs.txt");
-        for(i = 0; i < n; i++)
+        s_interval = 0;
+        f_interval = ind_cuda[0];
+        for(k = 0; k < n_cuda; k++)
         {
-            for(j = 0; j < num_epochs; j++)
+            filename = "Lrs" + to_string(k+1) + ".txt";
+            fout_lrs.open(filename);
+            cout << "lrs is opened" << endl;
+            for(i = s_interval; i < f_interval; i++)
             {
-                valid = 0;
-                lr = children[i].evaluateExpressionForPython(x[j], children[i].root, &valid);
-                if (valid == 0)
-                    fout_lrs << lr << '\t';
-                else
-                    fout_lrs << "-50000\t";
+                for(j = 0; j < num_epochs; j++)
+                {
+                    valid = 0;
+                    lr = children[i].evaluateExpressionForPython(x[j], children[i].root, &valid);
+                    if (valid == 0 && !(isinf(lr)))
+                    {
+                        fout_lrs << lr*0.001 << '\t';
+                        //cout << lr << '\t';
+                    }
+                    else
+                    {
+                        fout_lrs << "-50000\t";
+                        //cout << "-50000\t";
+                    }
+                }
+                fout_lrs << endl;
+                //cout << endl;
             }
-            fout_lrs << endl;
+            /*if(k+1 == n_cuda && remaind != 0)
+            {
+                for(i = (k+1)*ind_cuda; i < (k+1)*ind_cuda+remaind; i++)
+                {
+                    for(j = 0; j < num_epochs; j++)
+                    {
+                        valid = 0;
+                        lr = children[i].evaluateExpressionForPython(x[j], children[i].root, &valid);
+                        if (valid == 0)
+                        {
+                            fout_lrs << lr*0.001 << '\t';
+                            //cout << lr << '\t';
+                        }
+                        else
+                        {
+                            fout_lrs << "-50000\t";
+                            //cout << "-50000\t";
+                        }
+                    }
+                    fout_lrs << endl;
+                    //cout << endl;
+                }
+            }*/
+            fout_lrs.close();
+            cout << "lrs is closed" << endl;
+            if(k!=n_cuda-1)
+            {
+                s_interval += ind_cuda[k];
+                f_interval += ind_cuda[k+1];
+            }
         }
-        fout_lrs.close();
-        if (parallel)
+        if(cuda)
         {
-            fout_status.open("Status.txt");
-            fout_status << 1 << endl;
-            fout_status.close();
-            status = 1;
-            start_time = clock();
-            fin_status.open("Status.txt");
-            while (status == 1)
+            for(k = 0; k < n_cuda; k++)
             {
-                Sleep(1000);
-                //getline(fin_status, line);
-                fin_status.get(symbol);
-                fin_status.seekg(0);
-                if (symbol == '0' || symbol == '1')
-                    status = symbol - '0';
-                else
-                    continue;
-                //cout << status << endl;
+                filename = "Status" + to_string(k+1) + ".txt";
+                fout_status.open(filename);
+                fout_status << 1 << endl;
+                fout_status.close();
             }
-            fin_status.close();
+            start_time = clock();
+            for(k = 0; k < n_cuda; k++)
+            {
+                status = 1;
+                filename = "Status" + to_string(k+1) + ".txt";
+                fin_status.open(filename);
+                while (status == 1)
+                {
+                    Sleep(100);
+                    //getline(fin_status, line);
+                    fin_status.get(symbol);
+                    fin_status.seekg(0);
+                    if (symbol == '0' || symbol == '1')
+                        status = symbol - '0';
+                    else
+                        continue;
+                    //cout << symbol;
+                    //cout << status << endl;
+                }
+                fin_status.close();
+                //fout_log << fitness_by_neural_network();
+            }
             end_time = clock();
         }
-        if(parallel == false)
+        if(cuda == false)
         {
             start_time = clock();
             fout_log << fitness_by_neural_network();
@@ -2126,23 +2261,27 @@ int main()
         }
         cout << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
         fout_log << "From C++ to C++ " << (end_time - start_time)/1000 << endl;
-        fin_losses.open("Losses.txt");
         i = 0;
-        if (fin_losses.is_open())
+        for(k = 0; k < n_cuda; k++)
         {
-            while (getline(fin_losses, line))
+            filename = "Losses" + to_string(k+1) + ".txt";
+            fin_losses.open(filename);
+            if (fin_losses.is_open())
             {
-                //cout << line << endl;
-                size_t point {line.find(".")};
-                if (point != string::npos)
-                    line.replace(point, 1, ",");
-                losses[i+n] = stod(line);
-                i++;
-                //cout << line << endl;
-                //cout << losses[i+n-1] << endl;
+                while (getline(fin_losses, line))
+                {
+                    //cout << line << endl;
+                    size_t point {line.find(".")};
+                    if (point != string::npos)
+                        line.replace(point, 1, ",");
+                    losses[i+n] = stod(line);
+                    i++;
+                    //cout << line << endl;
+                    //cout << losses[i-1] << endl;
+                }
             }
+            fin_losses.close();
         }
-        fin_losses.close();
         if (fit_switch == "formula")
         {
             for(i = 0; i < n; i++)
@@ -2232,7 +2371,9 @@ int main()
         fout_log << "the best are found" << endl;
         fout_testLoss << losses[0] << endl;
     }
-
+    end_program = clock();
+    cout << "Total time " << (end_program-start_program)/1000 << endl;
+    fout_log << "Total time " << (end_program-start_program)/1000 << endl;
     //Py_Finalize();
     delete[] losses;
     for(i = 0; i < nrang; i++)
@@ -2258,13 +2399,22 @@ int main()
         delete[] x[i];
     }
     delete[] x;
+    delete[] ind_cuda;
+    for(i = 0; i < num_epochs; i++)
+    {
+        delete[] lrs[i];
+    }
+    delete[] lrs;
     fout_log.close();
     fout_testLoss.close();
+
+
 
 }
 
 
-// при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново???
+// € вставила только функцию, ее вызов, объ€вление и удаление массива
+//при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново???
 //
 // если обрабатывать подобные ошибки заменой на самое близкое возможное дл€ расчета число, то просто замени evaluateExpressionForPython на evaluateExpression
 // если после проверки будет пон€тно, что дл€ текущего индивида на одной из эпох learning rate не посчитаетс€, то передавай в питоне в функцию true
