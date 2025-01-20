@@ -1827,9 +1827,32 @@ string fitness_by_neural_network()
     return result;
 }
 
-get_lrs()
+void distribute_lrs(double** lrs, Tree* tree, int* ind_cuda, double** x, int n, int num_epochs)
 {
-
+    double f = 0.5, s = 0.2, t = 0.3, lr;
+    int i, j, valid, count_valid = 0;
+    for(i = 0; i < n; i++)
+    {
+        for(j = 0; j < num_epochs; j++)
+        {
+            valid = 0;
+            lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
+            if (valid == 0 && !(isinf(lr)))
+            {
+                lrs[i][j] = lr*0.001;
+            }
+            else
+            {
+                lrs[i][0] = -50000;
+                count_valid--;
+                break;
+            }
+        }
+        count_valid++;
+    }
+    ind_cuda[0] = round(count_valid*f);
+    ind_cuda[1] = round(count_valid*s);
+    ind_cuda[2] = count_valid - ind_cuda[0] - ind_cuda[1];
 }
 
 
@@ -1844,8 +1867,8 @@ int main()
     //fout_lrs.open("Lrs.txt");
     //srand(time(NULL));
     setlocale(0, "");
-    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 3, valid, ind_cuda, remaind;
-    int n = 5, num_generals = 500, general, status = 1, n_cuda = 2;//700 500
+    int i, j, k, in, obs, num_obs = 506-100, num_obs_test = 100, depth = 3, nrang = 3, num_epochs = 3, valid, remaind;
+    int n = 305, num_generals = 500, general, status = 1, n_cuda = 3;//700 500
     //n - количество индивидов в поколении, num_generals - количество поколений
     double MSE, MSE_test, lr;
     int switch_init = 0;//0 - полный метод, 1 - метод выращивания
@@ -1857,6 +1880,7 @@ int main()
     unsigned int start_time, end_time, start_program, end_program;
     char symbol;
     bool cuda = true;//чтобы включить параллельный режим без cuda, поставь n_cuda =1, если НЕпараллельный режим то тоже надо 1 поставить
+    int s_interval, f_interval, individual;
 
 
     start_program = clock();
@@ -1911,19 +1935,10 @@ int main()
         x[i][0] = i+1;
     }
 
-    ind_cuda[0] = 27;// 145
-    ind_cuda[1] = 9; // 49
-    ind_cuda[2] = 14; // Yulia
-    for(i = 0; i < n_cuda; i++)
-    {
-        sum_ind+=ind_cuda[i];
-        fout_log << i+1 << " " << ind_cuda[i] << endl;
-    }
-    if(sum_ind!=n)
-    {
-        cout << "AMOUNT OF DISTRIBUTED INDIVIDUALS DOES NOT EQUAL THEIR NUMBER!!!" << endl;
-        return(0);
-    }
+    //ind_cuda[0] = 27;// 145
+    //ind_cuda[1] = 9; // 49
+    //ind_cuda[2] = 14; // Yulia
+
 
     Sleep(10000);
     //synthetic_data(x, y, num_obs);
@@ -1933,7 +1948,15 @@ int main()
         cout << tree[i].printExpression() << endl;
         fout_log << tree[i].printExpression() << endl;
     }
-    get_lrs();
+    distribute_lrs(lrs, tree, ind_cuda, x, n, num_epochs);
+
+    for(i = 0; i < n_cuda; i++)
+    {
+        fout_log << i+1 << " " << ind_cuda[i] << endl;
+        cout << "ind_cuda " << i << " " << ind_cuda[i] << endl;
+    }
+
+    individual = 0;
     s_interval = 0;
     f_interval = ind_cuda[0];
     for(k = 0; k < n_cuda; k++)
@@ -1944,20 +1967,23 @@ int main()
         {
             for(j = 0; j < num_epochs; j++)
             {
-                valid = 0;
-                lr = tree[i].evaluateExpressionForPython(x[j], tree[i].root, &valid);
-                if (valid == 0 && !(isinf(lr)))
-                {
-                    fout_lrs << lr*0.001 << '\t';
-                    //cout << lr << '\t';
-                }
+                if (lrs[individual][0] == -50000)
+                    break;
                 else
-                {
-                    fout_lrs << "-50000\t";
-                    //cout << "-50000\t";
-                }
+                    fout_lrs << lrs[individual][j] << '\t';
             }
-            fout_lrs << endl;
+            if (lrs[individual][0] == -50000)
+            {
+                i--;
+                individual++;
+                continue;
+            }
+            else
+            {
+                fout_lrs << endl;
+                individual++;
+            }
+
             //cout << endl;
         }
         /*if(k+1 == n_cuda && remaind != 0)
@@ -2043,6 +2069,11 @@ int main()
             while (getline(fin_losses, line))
             {
                 //cout << line << endl;
+                while (lrs[i][0] == -50000)
+                {
+                    losses[i] = MAX;
+                    i++;
+                }
                 size_t point {line.find(".")};
                 if (point != string::npos)
                     line.replace(point, 1, ",");
@@ -2054,6 +2085,8 @@ int main()
         }
         fin_losses.close();
     }
+
+
     if (fit_switch == "formula")
     {
         for(i = 0; i < n; i++)
@@ -2162,6 +2195,13 @@ int main()
             cout << children[i].printExpression() << endl;
             fout_log << children[i].printExpression() << endl;
         }
+        distribute_lrs(lrs, children, ind_cuda, x, n, num_epochs);
+        for(i = 0; i < n_cuda; i++)
+        {
+            fout_log << i+1 << " " << ind_cuda[i] << endl;
+            cout << "ind_cuda " << i << " " << ind_cuda[i] << endl;
+        }
+        individual = 0;
         s_interval = 0;
         f_interval = ind_cuda[0];
         for(k = 0; k < n_cuda; k++)
@@ -2173,20 +2213,22 @@ int main()
             {
                 for(j = 0; j < num_epochs; j++)
                 {
-                    valid = 0;
-                    lr = children[i].evaluateExpressionForPython(x[j], children[i].root, &valid);
-                    if (valid == 0 && !(isinf(lr)))
-                    {
-                        fout_lrs << lr*0.001 << '\t';
-                        //cout << lr << '\t';
-                    }
+                    if (lrs[individual][0] == -50000)
+                        break;
                     else
-                    {
-                        fout_lrs << "-50000\t";
-                        //cout << "-50000\t";
-                    }
+                        fout_lrs << lrs[individual][j] << '\t';
                 }
-                fout_lrs << endl;
+                if (lrs[individual][0] == -50000)
+                {
+                    i--;
+                    individual++;
+                    continue;
+                }
+                else
+                {
+                    fout_lrs << endl;
+                    individual++;
+                }
                 //cout << endl;
             }
             /*if(k+1 == n_cuda && remaind != 0)
@@ -2271,6 +2313,11 @@ int main()
                 while (getline(fin_losses, line))
                 {
                     //cout << line << endl;
+                    while (lrs[i][0] == -50000)
+                    {
+                        i++;
+                        losses[i+n] = MAX;
+                    }
                     size_t point {line.find(".")};
                     if (point != string::npos)
                         line.replace(point, 1, ",");
@@ -2400,7 +2447,7 @@ int main()
     }
     delete[] x;
     delete[] ind_cuda;
-    for(i = 0; i < num_epochs; i++)
+    for(i = 0; i < n; i++)
     {
         delete[] lrs[i];
     }
@@ -2414,7 +2461,6 @@ int main()
 
 
 // я вставила только функцию, ее вызов, объявление и удаление массива
-//при частичной мутации при превышении максимального количества узлов точку мутации выбирать заново???
 //
 // если обрабатывать подобные ошибки заменой на самое близкое возможное для расчета число, то просто замени evaluateExpressionForPython на evaluateExpression
 // если после проверки будет понятно, что для текущего индивида на одной из эпох learning rate не посчитается, то передавай в питоне в функцию true
